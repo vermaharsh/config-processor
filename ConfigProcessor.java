@@ -6,6 +6,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.regex.Pattern;
 import java.util.stream.Stream;
 import java.util.stream.Collectors;
 
@@ -19,9 +20,18 @@ final class ConfigProcessor {
             return;
         }
 
+        //Parameter p1 = new Parameter(Parameter.ParameterType.fromString("os"), "windows");
+        //Set<Parameter> parameters = new HashSet<>();
+        //parameters.add(p1);
+        //Parameter p2 = new Parameter(Parameter.ParameterType.fromString("os"), "windows");
+        //System.out.println("p1 hash code = " + p1.hashCode());
+        //System.out.println("p2 hash code = " + p2.hashCode());
+        //System.out.println(p1.equals(p2) ? "p1 equals p2" : "p1 do not equals p2");
+        //System.out.println(parameters.contains(p2) ? "Set contains p2" : "Set do no contains p2");
+
         Map<String, List<ParameterizedConfigEntry>> parameterizedConfigProperties = new HashMap<>();
-        for (String config : args[0].split(";")) {
-            String[] kv = config.split(":");
+        for (String config : args[0].split(Pattern.quote(";"))) {
+            String[] kv = config.split(Pattern.quote(":"));
             ParameterizedConfigEntry pce = new ParameterizedConfigEntry(kv[0], kv[1]);
             List<ParameterizedConfigEntry> pces = parameterizedConfigProperties.get(pce.key);
             if (pces == null) {
@@ -32,8 +42,13 @@ final class ConfigProcessor {
             pces.add(pce);
         }
 
-        String[] envParamsRaw = args[1].split(";");
+        String[] envParamsRaw = args[1].split(Pattern.quote(";"));
         Set<Parameter> envParams = Parameter.parseAllKnownParameters(envParamsRaw);
+
+        System.out.println("Environment parameters:");
+        for (Parameter envParam : envParams) {
+            System.out.println(envParam.type + ": " + envParam.value);
+        }
 
         Map<String, String> configProperties = new HashMap<>();
         parameterizedConfigProperties.forEach((k,v) -> {
@@ -72,7 +87,7 @@ final class ConfigProcessor {
             }
 
             Parameter other = (Parameter)obj;
-            return this.type == other.type && this.value == other.value;
+            return this.type == other.type && this.value.equals(other.value);
         }
 
         @Override
@@ -83,6 +98,11 @@ final class ConfigProcessor {
             return result;
         }
 
+        @Override
+        public String toString() {
+            return String.format("%s=%s", type.typeString, value);
+        }
+
         private static Set<Parameter> parseAllKnownParameters(String[] rawParameters) {
             Set<Parameter> parsedParameters = new HashSet<>();
             if (rawParameters == null) {
@@ -90,7 +110,7 @@ final class ConfigProcessor {
             }
 
             for (String rawParameter : rawParameters) {
-                String[] pv = rawParameter.split("=");
+                String[] pv = rawParameter.split(Pattern.quote("="));
                 if (pv.length != 2) {
                     continue;
                 }
@@ -149,16 +169,22 @@ final class ConfigProcessor {
         private final String value;
 
         private ParameterizedConfigEntry(String parameterizedKey, String value) {
-            String[] kps = parameterizedKey.split("?");
+            String[] kps = parameterizedKey.split(Pattern.quote("?"));
             this.key = kps[0].trim();
             if (kps.length == 1) {
                 this.parameters = null;
             } else {
-                String[] rawParameters = kps[1].trim().split("&");
+                String[] rawParameters = kps[1].trim().split(Pattern.quote("&"));
                 this.parameters = Parameter.parseAllKnownParameters(rawParameters);
             }
 
             this.value = value;
+        }
+
+        @Override
+        public String toString() {
+            String parametersAsString = String.join("&", parameters.stream().map(Parameter::toString).collect(Collectors.toList()));
+            return String.format("%s?%s: %s", key, parametersAsString, value);
         }
 
         private boolean isCompatible(Set<Parameter> envParams) {
