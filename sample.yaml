@@ -1,0 +1,8 @@
+---
+foo: 20
+foo?p1=v1: 100
+foo?p1=v1&p2=v2: 120
+foo?p1=v1,p3=v3: 10
+bar: 'hello'
+bar?p1=v1,p2=v2,p3=v3: 'world'
+bar?p1=v1&p2=v2&p3=v3: 'again'
