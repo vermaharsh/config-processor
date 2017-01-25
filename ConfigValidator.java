@@ -38,7 +38,7 @@ final class ConfigValidator {
 
         parameterizedConfigs.forEach((k, v) -> {
             if (v.size() == 1) {
-                // Single parameterized configs are not ambiguous
+                System.out.println("Single parameterized configs are not ambiguous");
                 return;
             }
 
@@ -48,7 +48,7 @@ final class ConfigValidator {
                     if (v.get(i).isAmbiguousTo(v.get(j))) {
                         ParameterCollection pc = ParameterCollection.getCombined(v.get(i), v.get(j));
                         if (v.contains(pc)) {
-                            // disambiguating parameter collection already exists
+                            System.out.println("Disambiguating parameter collection already exists");
                             continue;
                         }
 
@@ -56,6 +56,30 @@ final class ConfigValidator {
                     }
                 }
             }
+
+            boolean noMoreRequired = true;
+            do {
+                for (ParameterCollection existing : v) {
+                    Set<ParameterCollection> evenMoreRequired = new HashSet<>();
+                    for (ParameterCollection added : moreRequired) {
+                        if (existing.isAmbiguousTo(added)) {
+                            ParameterCollection pc = ParameterCollection.getCombined(existing, added);
+                            if (v.contains(pc)) {
+                                System.out.println("Disambiguating parameter collection already exists");
+                                continue;
+                            }
+
+                            noMoreRequired = false;
+                            evenMoreRequired.add(pc);
+                        }
+                    }
+
+                    if (evenMoreRequired.size() > 0) {
+                        moreRequired.addAll(evenMoreRequired);
+                    }
+                }
+
+            } while (noMoreRequired);
 
             if (moreRequired.size() > 0) {
                 System.out.println("Configuration is ambiguous, please add following parameter combinations to fix it.");
@@ -86,8 +110,10 @@ final class ConfigValidator {
         }
 
         private static ParameterCollection getCombined(ParameterCollection pc1, ParameterCollection pc2) {
-            // TODO: Implement
-            return pc1;
+            ParameterCollection result = new ParameterCollection();
+            result.parameters = new HashSet<>(pc1.parameters);
+            result.parameters.addAll(pc2.parameters);
+            return result;
         }
 
         private boolean isAmbiguousTo(ParameterCollection other) {
